@@ -1,0 +1,164 @@
+<script>
+var endTime = function (time, expr) {
+    var tagType=expr.tag
+    if(tagType=='note')
+      {
+        return time+expr.dur
+      }
+    if(tagType=='seq')
+      {
+	return time+endTime(0,expr.left)+endTime(0,expr.right)
+      }    
+}
+
+var totTim=0
+var out
+
+function note(musexpr,curTim)
+{
+  out+="{ tag: '" + musexpr.tag + "', pitch: '" + musexpr.pitch + "', start: " + curTim + ", dur: " + musexpr.dur + " }" 
+  return curTim+musexpr.dur
+}
+
+function rest(musexpr,curTim)
+{
+  out+="{ tag: 'rest', start: " + curTim + ", dur: " + musexpr.dur + " }" 
+  return curTim+musexpr.dur
+}
+
+function seq(musexpr,curTim)
+{
+  var tim=curTim
+  tim=comp(musexpr.left,tim)
+  out+=',\n'
+  tim=comp(musexpr.right,tim)
+  return tim
+}
+
+function par(musexpr,curTim)
+{
+  var tim=curTim
+  timl=comp(musexpr.left,tim)
+  out+=',\n'
+  timr=comp(musexpr.right,tim)
+  tim+=(timl>timr)?timl:timr
+  return tim
+}
+
+function repeat(musexpr,curTim)
+{
+  var tim=curTim
+  for(var i=0;i<musexpr.number;i++) 
+    {
+      tim=comp(musexpr.loop,tim)
+      if(i<musexpr.number-1) out+=',\n'
+    }
+  return tim
+}
+
+var tagTypes=[]				//holds func pointer for each tag type
+
+tagTypes['note']=note
+tagTypes['rest']=rest
+tagTypes['seq']=seq
+tagTypes['par']=par
+tagTypes['repeat']=repeat
+
+//tagTypes['']=
+
+var comp = function (musexpr,curTim) 	//sorp is seq (true) or par (false)
+{
+  return tagTypes[musexpr.tag](musexpr,curTim)
+}
+
+var compile = function (musexpr) 
+{
+  out=''
+  comp(src,0)
+  return '['+out+']'
+}
+
+var src = { 
+  tag: 'seq',
+  left: 
+    { 
+      tag: 'seq',
+      left: 
+        {
+          tag: 'note', 
+          pitch: 'a4', 
+          dur: 250 
+        },
+      right: 
+        { 
+          tag: 'repeat', 
+          number: 6,
+          loop:
+            {
+              tag: 'seq',
+              left: 
+                {
+                  tag: 'note', 
+                  pitch: 'a4', 
+                  dur: 50 
+                },
+              right: 
+                { 
+                  tag: 'rest', 
+                  dur: 50 
+                }
+            }
+        } 
+    },
+  right:
+    {
+      tag: 'par',
+      left: 
+        {
+          tag: 'note', 
+          pitch: 'c4', 
+          dur: 500 
+        },
+      right: 
+        {
+          tag: 'seq',
+          left: 
+            {
+              tag: 'note', 
+              pitch: 'a4', 
+              dur: 250 
+            },
+          right: 
+            { 
+              tag: 'note', 
+              pitch: 'b4', 
+              dur: 250 
+            }
+        }
+     }
+}
+
+alert(compile(src))
+
+/*
+var melody1_mus = { tag: 'note', pitch: 'a4', dur: 125 };
+var melody2_mus = 
+    { tag: 'seq',
+      left: 
+       { tag: 'seq',
+         left: { tag: 'note', pitch: 'a4', dur: 250 },
+         right: { tag: 'note', pitch: 'b4', dur: 250 } },
+      right:
+       { tag: 'seq',
+         left: { tag: 'note', pitch: 'c4', dur: 500 },
+         right: { tag: 'note', pitch: 'd4', dur: 500 } } };
+if(endTime(500, melody1_mus)== 625) 
+	alert('One note test') 
+else 
+	alert('Fail'); 
+if(endTime(0, melody2_mus)== 1500) 
+	alert('Four note test') 
+else 
+	alert('Fail');
+*/
+</script>

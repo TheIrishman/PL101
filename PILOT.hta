@@ -1,0 +1,134 @@
+<script>
+
+String.prototype.trim=function() {return(this.replace(/^\s+/, "").replace(/\s+$/, ""))}
+
+var pc
+var prog=[]
+var pl=0
+var labels=[]
+var running
+var acc
+var mtch
+var mA=[]
+var op
+
+function getInput()
+{
+  var txt=document.all.srcCode.innerText
+  prog=txt.split('\n')
+  pl=prog.length
+}
+
+function parse()
+{
+  //extract labels
+  labels=[]
+  for(var i=0;i<pl;i++)
+    {
+      if(prog[i].substr(0,1)=='*') 
+        {
+          labels[prog[i].substring(1,prog[i].indexOf(' '))]=i
+          prog[i]=prog[i].substr(prog[i].indexOf(' ')+1) 		//remove label from line to simplify processing
+        }
+    }
+}
+
+function execute()
+{
+  var tst
+  var lin=prog[pc]
+  var sl=lin.split(':')
+  var oc=sl[0].toUpperCase()
+  if(oc.length>2)
+    {
+      alert("Parse error!\nAbnormal termination")
+      running=false
+      return
+    }
+  if(oc.length==2)
+    {
+      tst=oc.substr(0,1)
+      if(((tst=='Y')&&(!mtch))||((tst=='N')&&(mtch))) 
+        {
+          pc++
+          return
+        }
+      oc=oc.substr(1)
+    }
+  switch(oc)
+    {
+      case 'A':									//Accept input, result goes in acc
+        {
+          acc=prompt('Enter your text here.','')
+          op.innerHTML+=acc+'<BR>'
+          break
+        }
+      case 'J':									//Jump to label, given in 'data' (sl[1])
+        {
+          var lbl=sl[1].trim()
+          if(labels[lbl]) pc=labels[lbl]-1					//-1 to compensate for pc++ at end of loop!
+          break
+        }
+      case 'M':									//Match (any) of values in 'data' (sl[1]). Not case sensitive
+        {
+          mA=sl[1].toUpperCase().split(' ')
+          var aU=acc.toUpperCase()
+          var mAl=mA.length
+          mtch=false
+          for(var i=0;i<mAl;i++) if((mA[i].trim().indexOf(aU))>-1) mtch=true
+          break
+        }
+      case 'S':									//Stop program execution
+        {
+          running=false
+          break
+        }
+      case 'T':									//Text out. 'Data' (sl[1]) is echoed to console
+        {
+          op.innerHTML+=sl[1]+'<BR>'
+          break
+        }
+    }
+  pc++
+}
+
+function runit()
+{
+  op=document.all.output
+  pc=0
+  acc=''
+  mtch=false
+  getInput()
+  parse()
+  running=true
+  while(running) execute()
+  alert("Program terminated")
+}
+
+</script>
+<body>
+<textarea id=srcCode style="position:absolute;left:10;top:10;width:600;height:300">
+T:Hello there!
+T:Let me guess your favorite colour?
+T:Is it red?
+A:
+M:y yes
+YJ:done
+T:Is it green?
+A:
+M:y yes
+YJ:done
+T:Is it blue?
+A:
+M:y yes
+YJ:done
+T:I give up
+S:
+*done T:I knew I could guess it!
+T:Thanks for playing
+S:
+</textarea>
+<button style="position:absolute;left:10;top:310" onclick=runit()>Run</button>
+<div id=output style="position:absolute;left:10;top:350;width:600;height:300;overflow:scroll">
+</div>
+</body>
