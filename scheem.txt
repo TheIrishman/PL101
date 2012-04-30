@@ -1,0 +1,45 @@
+start =
+    scheem
+
+validchar = 
+    [0-9a-zA-Z_?!+=@#$%^&*/.-]
+
+atom =
+    chars:validchar+
+    { return chars.join(""); }
+        
+elmnt=
+    atom
+  / expr
+
+whitespace =
+    " "
+  / "\t"
+  / "\n"
+
+closepara =
+    " "* ")"
+groups =
+    el:elmnt closepara
+    {return el}
+  / el:elmnt whitespace+
+    {return el}
+  / "'" 
+    {return "quote"}
+  
+list =
+    groups+
+
+comment = 
+    ";" ";" [^\n]+ "\n"
+    
+expr =
+    comment
+    {return ""}
+  / "(" lst:list 
+    {return lst}
+
+scheem = 
+    atom
+  / expr
+  
