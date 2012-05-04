@@ -1,0 +1,185 @@
+<script src=parser.js>
+</script>
+<script>
+var errMsg = '';
+
+var evalScheem = function (expr, env) {
+    if (!env) 
+    {
+        errMsg = 'Error: No environment supplied.'
+        throw('Error');
+    }
+    // Numbers evaluate to themselves
+    if (typeof expr === 'number') {
+        return expr;
+    }
+    // Strings evaluate to vars
+    if (typeof expr === 'string') {
+        return env[expr];
+    }
+    if (expr === 'error') 
+    {
+        errMsg = 'Error: error in expr.'
+        throw('Error');
+    }
+    // Look at head of list for operation
+    switch (expr[0]) {
+        case 'begin':
+            var tmp;
+            var el = expr.length;
+            for(var i=1;i<el;i++)
+            {
+                tmp = evalScheem(expr[i], env);
+            }
+            return tmp;
+        case 'set!':
+            if(env[expr[1]])
+            {
+                env[expr[1]] = evalScheem(expr[2], env);
+                return 0;
+            }
+            else
+            {
+                errMsg = 'Cannot set! an undefined variable';
+                throw('Error');
+            }
+        case 'define':
+            env[expr[1]] = evalScheem(expr[2], env);
+            return 0;           
+        case '*':
+            return evalScheem(expr[1], env) *
+                   evalScheem(expr[2], env);
+        case '/':
+            return evalScheem(expr[1], env) /
+                   evalScheem(expr[2], env);
+        case '+':
+            return evalScheem(expr[1], env) +
+                   evalScheem(expr[2], env);
+        case '-':
+            return evalScheem(expr[1], env) -
+                   evalScheem(expr[2], env);
+        case '=':
+            var eq =
+                (evalScheem(expr[1], env) ===
+                 evalScheem(expr[2], env));
+            if (eq) return '#t';
+            return '#f';
+        case '=':
+            var eq =
+                (evalScheem(expr[1], env) ===
+                 evalScheem(expr[2], env));
+            if (eq) return '#t';
+            return '#f';
+        case '<':
+            var lt =
+                (evalScheem(expr[1], env) <
+                 evalScheem(expr[2], env));
+            if (lt) return '#t';
+            return '#f';
+        case 'quote':
+            return expr[1];
+        case "'":	//short form for quote
+            return expr[1];
+        case 'cons':
+            ret[0]=evalScheem(expr[1], env);
+            tmp=evalScheem(expr[2], env);
+            tl=tmp.length;
+            for(i=0;i<tl;i++)
+            {
+                ret[ret.length]=tmp[i];
+            }
+            return ret;
+        case 'car':
+            ret=evalScheem(expr[1], env);
+            return ret[0];
+        case 'cdr':
+            ret=evalScheem(expr[1], env);
+            ret.shift();
+            return ret;
+        case 'if':
+            if(evalScheem(expr[1], env)=='#t') 
+            {
+                return evalScheem(expr[2], env);
+            }
+            else 
+            {
+                return evalScheem(expr[3], env);
+            }
+        //finaly, if we got here, then we have an unkown symbol
+        errMsg = 'Unknown symbol: ' + expr
+        throw('Error');
+    }
+};
+var tstAr=[];
+tstAr[0]=['define', 'x', 5];
+tstAr[1]=['set!', 'x', ['+', 2, 1]];
+tstAr[2]=['+', 2, 4];
+tstAr[3]=['begin',
+            ['define', 'x', 5],
+            ['set!', 'x', ['+', 'x', 1]],
+            ['+', 2, 'x']];
+tstAr[4]=['+', 2, ['*', 3, 4]]
+
+function tst()
+{
+  var da=document.all;
+  var res='';
+  var env=[];
+  var tstArLen=tstAr.length;
+  for(var i=0;i<tstArLen;i++)
+  {
+    try
+    {
+      env=[];
+      res=evalScheem(tstAr[i], env)
+      da.output.innerText+='\n\n'+tstAr[i]+'\n>>>\n'+res+'\n\n';
+    }
+    catch(e)
+    {
+      da.output.innerText+='\n\n'+tstAr[i]+'\n>>> Error!\n'+errMsg+'\n\n'
+    }
+  }
+}
+
+function prse()
+{
+  var da=document.all
+  var tmp=scheem.parse(da.src.innerText)
+  da.comp.innerText=tmp
+}
+
+function cmp()
+{
+  var da=document.all
+  var tmp=scheem.parse(da.src.innerText)
+  da.comp.innerText=tmp
+  try
+  {
+    env=[];
+    res=evalScheem(tmp, env)
+    da.output.innerText+='\n\n'+tmp+'\n>>>\n'+res+'\n\n';
+  }
+  catch(e)
+  {
+      alert(e.message)
+    da.output.innerText+='\n\n'+tmp+'\n>>> Error!\n'+errMsg+'\n\n'
+  }    
+}
+
+function run()
+{
+
+}
+</script>
+<body style="background:url('js.png')" topmargin=0px leftmargin=0px rightmargin=0px>
+<textarea id=src style=position:absolute;top:10%;left:5%;height:80%;width:25%>(+ 2 (* 3 4))</textarea>
+<button style=position:absolute;top:45%;left:31% onclick=prse()>Parse</button>
+<button style=position:absolute;top:55%;left:31% onclick=cmp()>Run</button>
+
+<textarea id=comp style=position:absolute;top:10%;left:37%;height:80%;width:25%></textarea>
+<button style=position:absolute;top:45%;left:65% onclick=run()>Run</button>
+<button style=position:absolute;top:55%;left:65% onclick=tst()>Test</button>
+<div id=output style=position:absolute;top:10%;left:71%;height:80%;width:25%;background:#ffffcc>
+
+</div>
+</body>
