@@ -1,0 +1,396 @@
+<script src=parser.js>
+</script>
+<script>
+
+
+
+var evalScheem_old = function (expr, env) {
+    if (!env) 
+    {
+        errMsg = 'Error: No environment supplied.'
+        throw('Error');
+    }
+    // Numbers evaluate to themselves
+    if (typeof expr === 'number') {
+        return expr;
+    }
+    // Strings evaluate to vars
+    if (typeof expr === 'string') {
+        return env[expr];
+    }
+    if (expr === 'error') 
+    {
+        errMsg = 'Error: error in expr.'
+        throw('Error');
+    }
+    // Look at head of list for operation
+    switch (expr[0]) {
+        case 'begin':
+            var tmp;
+            var el = expr.length;
+            for(var i=1;i<el;i++)
+            {
+                tmp = evalScheem(expr[i], env);
+            }
+            return tmp;
+        case 'set!':
+            if(env[expr[1]])
+            {
+                env[expr[1]] = evalScheem(expr[2], env);
+                return 0;
+            }
+            else
+            {
+                errMsg = 'Cannot set! an undefined variable';
+                throw('Error');
+            }
+        case 'define':
+            env[expr[1]] = evalScheem(expr[2], env);
+            return 0;           
+        case '*':
+            return evalScheem(expr[1], env) *
+                   evalScheem(expr[2], env);
+        case '/':
+            return evalScheem(expr[1], env) /
+                   evalScheem(expr[2], env);
+        case '+':
+            return evalScheem(expr[1], env) +
+                   evalScheem(expr[2], env);
+        case '-':
+            return evalScheem(expr[1], env) -
+                   evalScheem(expr[2], env);
+        case '=':
+            var eq =
+                (evalScheem(expr[1], env) ===
+                 evalScheem(expr[2], env));
+            if (eq) return '#t';
+            return '#f';
+        case '=':
+            var eq =
+                (evalScheem(expr[1], env) ===
+                 evalScheem(expr[2], env));
+            if (eq) return '#t';
+            return '#f';
+        case '<':
+            var lt =
+                (evalScheem(expr[1], env) <
+                 evalScheem(expr[2], env));
+            if (lt) return '#t';
+            return '#f';
+        case 'quote':
+            return expr[1];
+        case "'":	//short form for quote
+            return expr[1];
+        case 'cons':
+            ret[0]=evalScheem(expr[1], env);
+            tmp=evalScheem(expr[2], env);
+            tl=tmp.length;
+            for(i=0;i<tl;i++)
+            {
+                ret[ret.length]=tmp[i];
+            }
+            return ret;
+        case 'car':
+            ret=evalScheem(expr[1], env);
+            return ret[0];
+        case 'cdr':
+            ret=evalScheem(expr[1], env);
+            ret.shift();
+            return ret;
+        case 'if':
+            if(evalScheem(expr[1], env)=='#t') 
+            {
+                return evalScheem(expr[2], env);
+            }
+            else 
+            {
+                return evalScheem(expr[3], env);
+            }
+        //finaly, if we got here, then we have an unkown symbol
+        errMsg = 'Unknown symbol: ' + expr
+        throw('Error');
+    }
+};
+/*-----------------------------------------------
+| Okay. I absolutely hate the way that we are   |
+| implementing scope chains. And right now I    |
+| cannot fathom why we are doing it this way.   |
+| I am probably going to seriously regret this  |
+| later! But, what the hell.                    |
+|                                               |
+| So, I am going to use a far more simple       |
+| system. Hash table arrays a la JS, with scope |
+| beeing manged recursivley.                    |
+|                                               |
+| As new scopes (within functions) are created  |
+| the local env will be increased, and as js is |
+| call by value, when the return occurs the     |
+| inner scope will be cleared.                  |
+|                                               |
+| This might cause problems if scheem has       |
+| closures (god I hate that name!). Proper      |
+| Scheme does have them (it was the first prog  |
+| language to use them). But I still hate that  |
+| scope chain. It is just so ugly and           |
+| unperformant. Yuk.                            |
+|                                               |
+| So, if I do need to make closures work, well, |
+| I will cross that bridge when I get to it.    |
+|                                               |
+-----------------------------------------------*/
+var errMsg = '';
+
+var lookupNasty = function (env, v) {
+    if (env === null) 
+      {
+        errMsg="No enviroment set! (looking for var:"+v+")";
+        throw v;
+      }
+    if (env.name === v) return env.value;
+    return lookup(env.outer, v);
+};
+
+function lookup(env, v) 
+{
+    if (env === null) 
+      {
+        errMsg="No enviroment set! (looking for var:"+v+")";
+        throw v;
+      }
+    try
+      {
+        if(env[v]) return env[v];
+        if(env._outer) return lookup(env._outer,v);
+        return null;
+      }
+    catch(e)
+      {
+        errMsg="Undefined variable name: "+v;
+        throw v
+      }
+}
+
+function assign(expr, tmpEnv)
+{
+  var el=expr.length;
+  for(var i=0;i<el;i++) 
+    {
+      ei=expr[i]
+      tmpEnv[ei[0]]=evalScheem(ei[1], tmpEnv)
+    }
+  return tmpEnv;
+}
+
+/*
+add in:
+string 	len, substr, [], parseInt, parseFloat, toUpper, toLower, indexOf, &
+array 	split, join, &, sort(with comp funct),
+set/bag	^, &, |, add, rem, in,
+
+ inc dec and or ex, sl, sr, rl rr
+isInt, isFloat etc
+cons car cdr
+list
+
+for?, while?, repeat?
+
+for each
+
+
+fold foldr unfold map filter
+*/
+
+
+var trc=[]
+
+var evalScheem = function (expr, env)
+{
+  trc.push(expr[0] + ' - '  + typeof expr)
+  try
+    {
+      if(!env) 
+        {
+          errMsg='Error: No environment supplied.'
+          throw('Error');
+        }
+      if(typeof expr==='number') return expr;			// Numbers evaluate to themselves
+      if(typeof expr==='string') return lookup(env, expr);	// Strings are variable references
+      var e0=expr[0]
+      if(e0=='begin')
+        {
+          var tmp;
+          var el = expr.length;
+          for(var i=1;i<el;i++) tmp = evalScheem(expr[i], env);
+          return tmp;
+        }
+      if(e0=='+') return evalScheem(expr[1], env) + evalScheem(expr[2], env);
+      if(e0=='-') return evalScheem(expr[1], env) - evalScheem(expr[2], env);
+      if(e0=='*') return evalScheem(expr[1], env) * evalScheem(expr[2], env);
+      if(e0=='/') return evalScheem(expr[1], env) / evalScheem(expr[2], env);
+      if(e0=='=') return (evalScheem(expr[1], env) == evalScheem(expr[2], env))?'#t':'#f';
+      if(e0=='==') return (evalScheem(expr[1], env) === evalScheem(expr[2], env))?'#t':'#f';
+      if(e0=='!=') return (evalScheem(expr[1], env) !== evalScheem(expr[2], env))?'#t':'#f';
+      if(e0=='>=') return (evalScheem(expr[1], env) >= evalScheem(expr[2], env))?'#t':'#f';
+      if(e0=='<=') return (evalScheem(expr[1], env) <= evalScheem(expr[2], env))?'#t':'#f';
+      if(e0=='quote') return expr[1];
+      if(e0=="'") return expr[1];	//short form for quote
+      if(e0=='cons')
+        {
+          ret[0]=evalScheem(expr[1], env);
+          tmp=evalScheem(expr[2], env);
+          tl=tmp.length;
+          for(i=0;i<tl;i++) ret[ret.length]=tmp[i];
+          return ret;
+        }
+      if(e0=='car')
+        {
+          ret=evalScheem(expr[1], env);
+          return ret[0];
+        }
+      if(e0=='cdr')
+        {
+          ret=evalScheem(expr[1], env);
+          ret.shift();
+          return ret;
+        }
+      if(e0=='if')
+        {
+          if(evalScheem(expr[1], env)=='#t') return evalScheem(expr[2], env);
+          else return evalScheem(expr[3], env);
+        }
+      if(e0=='set!')
+        {
+          var tmp=env
+          while((!tmp[expr[1]])&&(tmp._outer)) tmp=tmp._outer		//search the scopes for where the variable is defined (inner most first)
+          if(tmp[expr[1]])
+            {
+              tmp[expr[1]] = evalScheem(expr[2], env);
+              return 0;
+            }
+          else
+            {
+              errMsg = 'Cannot set! an undefined variable: '+expr[1];
+              throw('Error');
+            }
+        }
+      if(e0=='define')
+        {
+          //add in define = as lambda?
+          env[expr[1]] = evalScheem(expr[2], env);
+          return 0;
+        }
+      if(e0=='let')
+        {
+          var tmpEnv=[]
+          tmpEnv._outer = env;
+          tmpEnv=assign(expr[1],tmpEnv);
+          return evalScheem(expr[2], tmpEnv);			//do all other let statements (using tmpEnv)
+        }
+      if(e0=='lambda')
+        {
+          return function()
+            {
+              var el=expr.length-1
+              var el=(el>arguments.length)?el:arguments.length
+              var tmpEnv=[]
+              for(var i=1;i<el;i++) tmpEnv[expr[i]]=arguments[i-1] //add all but last into local scope!
+              tmpEnv._outer=env
+              return evalScheem(expr[2], tmpEnv);
+            }
+        }
+      // Simple application
+      var func = evalScheem(expr[0], env);
+      var arg = evalScheem(expr[1], env);
+      return func(arg);
+    }
+  catch(e)
+    {
+      errMsg=errMsg+'.\n\nStack trace:\n==========\n'+trc.join('\n')+'\n==========\n'
+      throw('Error')
+    }
+};
+
+
+var tstAr=[];
+tstAr[0]=['define', 'x', 5];
+tstAr[1]=['set!', 'x', ['+', 2, 1]];
+tstAr[2]=['+', 2, 4];
+tstAr[3]=['begin',
+            ['define', 'x', 5],
+            ['set!', 'x', ['+', 'x', 1]],
+            ['+', 2, 'x']];
+tstAr[4]=['+', 2, ['*', 3, 4]]
+
+tstAr[5]=['begin', ['define', 'z', 5],['let', [['x', ['+', 'z', 3]],['y', 2]], ['+', 'z', ['+','x', 'y']]]]
+//test lambda, then get head around use of lambda!!!!
+
+tstAr[6]=['begin', ['define', 'inc', ['lambda', 'x', ['+', 'x', 1]]],['inc', 5]] 
+
+tstEnv=[]
+//alert(trc.join('\n'))
+
+function tst()
+{
+  trc=[]
+
+  var da=document.all;
+  var res='';
+  var env=[];
+  var tstArLen=tstAr.length;
+  for(var i=0;i<tstArLen;i++)
+  {
+    try
+    {
+      env=[];
+      res=evalScheem(tstAr[i], env)
+      da.output.innerText+='\n\n'+tstAr[i]+'\n>>>\n'+res+'\n\n';
+    }
+    catch(e)
+    {
+      da.output.innerText+='\n\n'+tstAr[i]+'\n>>> Error!\n'+errMsg+'\n\n'
+    }
+  }
+}
+
+function prse()
+{
+  var da=document.all
+  var tmp=scheem.parse(da.src.innerText)
+  da.comp.innerText=tmp
+}
+
+function cmp()
+{
+  var da=document.all
+  var tmp=scheem.parse(da.src.innerText)
+  da.comp.innerText=tmp
+  try
+  {
+    env=[];
+    res=evalScheem(tmp, env)
+    da.output.innerText+='\n\n'+tmp+'\n>>>\n'+res+'\n\n';
+  }
+  catch(e)
+  {
+      alert(e.message)
+    da.output.innerText+='\n\n'+tmp+'\n>>> Error!\n'+errMsg+'\n\n'
+  }    
+}
+
+function run()
+{
+
+}
+</script>
+<body style="background:url('js.png')" topmargin=0px leftmargin=0px rightmargin=0px>
+<textarea id=src style=position:absolute;top:10%;left:5%;height:80%;width:25%>(+ 2 (* 3 4))</textarea>
+<button style=position:absolute;top:45%;left:31% onclick=prse()>Parse</button>
+<button style=position:absolute;top:55%;left:31% onclick=cmp()>Run</button>
+
+<textarea id=comp style=position:absolute;top:10%;left:37%;height:80%;width:25%></textarea>
+<button style=position:absolute;top:45%;left:65% onclick=run()>Run</button>
+<button style=position:absolute;top:55%;left:65% onclick=tst()>Test</button>
+<div id=output style=position:absolute;top:10%;left:71%;height:80%;width:25%;background:#ffffcc;overflow:scroll>
+
+</div>
+</body>
