@@ -159,7 +159,7 @@ function lookup(env, v)
       }
     try
       {
-        if(env[v]) return env[v];
+        if(env[v]!==undefined) return env[v];
         if(env._outer) return lookup(env._outer,v);
         return null;
       }
@@ -261,8 +261,8 @@ var evalScheem = function (expr, env)
       if(e0=='set!')
         {
           var tmp=env
-          while((!tmp[expr[1]])&&(tmp._outer)) tmp=tmp._outer		//search the scopes for where the variable is defined (inner most first)
-          if(tmp[expr[1]])
+          while((tmp[expr[1]]===undefined)&&(tmp._outer)) tmp=tmp._outer		//search the scopes for where the variable is defined (inner most first)
+          if(tmp[expr[1]]!==undefined)
             {
               tmp[expr[1]] = evalScheem(expr[2], env);
               return 0;
@@ -316,7 +316,7 @@ tstAr[0]=['define', 'x', 5];
 tstAr[1]=['set!', 'x', ['+', 2, 1]];
 tstAr[2]=['+', 2, 4];
 tstAr[3]=['begin',
-            ['define', 'x', 5],
+            ['define', 'x', 0],
             ['set!', 'x', ['+', 'x', 1]],
             ['+', 2, 'x']];
 tstAr[4]=['+', 2, ['*', 3, 4]]
